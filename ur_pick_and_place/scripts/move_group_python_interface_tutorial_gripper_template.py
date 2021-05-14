@@ -48,7 +48,7 @@ import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
 from math import pi
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from moveit_commander.conversions import pose_to_list
 ## END_SUB_TUTORIAL
 
@@ -79,6 +79,8 @@ def all_close(goal, actual, tolerance):
 
   return True
 
+global teleop # ADDED BY RIKA (2021-05-13)
+teleop = False
 
 class MoveGroupPythonIntefaceTutorial(object):
   """MoveGroupPythonIntefaceTutorial"""
@@ -166,13 +168,20 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## thing we want to do is move it to a slightly better configuration.
     # We can get the joint values from the group and adjust some of the values:
     joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = 0
-    joint_goal[1] = -pi/4
-    joint_goal[2] = pi/4
-    joint_goal[3] = -pi/2
-    joint_goal[4] = 0
-    joint_goal[5] = pi/3
-    # joint_goal[6] = 0
+    if joint_goal[1] > -pi/2:
+        joint_goal[0] = 0
+        joint_goal[1] = -pi
+        joint_goal[2] = pi/2
+        joint_goal[3] = -pi
+        joint_goal[4] = 0
+        joint_goal[5] = pi/3
+    elif joint_goal[1] < -pi/2:
+        joint_goal[0] = 0
+        joint_goal[1] = 0
+        joint_goal[2] = 0
+        joint_goal[3] = 0
+        joint_goal[4] = 0
+        joint_goal[5] = 0
 
     # The go command can be called with joint values, poses, or without any
     # parameters if you have already set the pose or joint target for the group
@@ -498,6 +507,20 @@ class MoveGroupPythonIntefaceTutorial(object):
 
       rospy.sleep(0.1)
 
+  def stop_callback(self, data): ### ADDED BY RIKA (2021-05-13)
+      global teleop
+      if data.data == True and teleop == False:
+          move_group = self.move_group
+          move_group.stop()
+          print("Stop arm --> Teleop mode");
+      elif data.data == False and teleop == True:
+          print("Start arm");
+      teleop = data.data
+          
+
+  def stop_listener(self): ### ADDED BY RIKA (2021-05-13)
+      stop_sub = rospy.Subscriber("/arm/stop_arm", Bool, self.stop_callback)
+
 def main():
   try:
     print ""
@@ -509,6 +532,7 @@ def main():
     print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
     raw_input()
     tutorial = MoveGroupPythonIntefaceTutorial()
+    tutorial.stop_listener() ### ADDED BY RIKA (2021-05-13)
     
     print "============ Press `Enter` to reset the gripper ..."
     raw_input()
@@ -530,6 +554,11 @@ def main():
     raw_input()
     tutorial.go_to_joint_state()
 
+    print "============ Press `Enter` to execute a movement using a joint state goal ..."
+    raw_input()
+    tutorial.go_to_joint_state()
+
+    
     # print "============ Press `Enter` to execute a movement using a pose goal ..."
     # raw_input()
     # tutorial.go_to_pose_goal(init_pose_goal)
@@ -537,7 +566,8 @@ def main():
     # you can create your own waypoint and run the following code.
     print "============ Press `Enter` to plan and display a Cartesian path ..."
     raw_input()
-    cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints_1)
+    #cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints_1)
+    cartesian_plan, fraction = tutorial.plan_cartesian_path()
 
     print "============ Press `Enter` to display a saved trajectory (this will replay the Cartesian path)  ..."
     raw_input()
@@ -553,9 +583,9 @@ def main():
     tutorial.publisher(150)
     
     # you can create your own waypoint and run the following code.
-    print "============ Press `Enter` to plan and display a Cartesian path ..."
-    raw_input()
-    cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints_2)
+    #print "============ Press `Enter` to plan and display a Cartesian path ..."
+    #raw_input()
+    #cartesian_plan, fraction = tutorial.plan_cartesian_path(waypoints=waypoints_2)
 
     print "============ Press `Enter` to display a saved trajectory (this will replay the Cartesian path)  ..."
     raw_input()
