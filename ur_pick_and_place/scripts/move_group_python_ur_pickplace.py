@@ -48,9 +48,13 @@ import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
 from math import pi
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from moveit_commander.conversions import pose_to_list
 ## END_SUB_TUTORIAL
+
+import roslib; roslib.load_manifest('robotiq_2f_gripper_control')
+from robotiq_2f_gripper_control.msg import _Robotiq2FGripper_robot_output  as outputMsg
+from time import sleep
 
 
 def all_close(goal, actual, tolerance):
@@ -75,17 +79,19 @@ def all_close(goal, actual, tolerance):
 
   return True
 
+global teleop # ADDED BY RIKA (2021-05-13)
+teleop = False
 
-class MoveGroupPythonIntefaceTutorial(object):
-  """MoveGroupPythonIntefaceTutorial"""
+class MoveGroupPythonURPickPlace(object):
+  """MoveGroupPythonURPickPlace"""
   def __init__(self):
-    super(MoveGroupPythonIntefaceTutorial, self).__init__()
+    super(MoveGroupPythonURPickPlace, self).__init__()
 
     ## BEGIN_SUB_TUTORIAL setup
     ##
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
     moveit_commander.roscpp_initialize(sys.argv)
-    rospy.init_node('move_group_python_interface_tutorial', anonymous=True)
+    rospy.init_node('move_group_python_ur_pickplace', anonymous=True)
 
     ## Instantiate a `RobotCommander`_ object. Provides information such as the robot's
     ## kinematic model and the robot's current joint states
@@ -97,7 +103,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     scene = moveit_commander.PlanningSceneInterface()
 
     ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
-    ## to a planning group (group of joints).  In this tutorial the group is the primary
+    ## to a planning group (group of joints).  In this pickplace the group is the primary
     ## arm joints in the Panda robot, so we set the group's name to "panda_arm".
     ## If you are using a different robot, change this value to the name of your robot
     ## arm planning group.
@@ -145,10 +151,11 @@ class MoveGroupPythonIntefaceTutorial(object):
     self.planning_frame = planning_frame
     self.eef_link = eef_link
     self.group_names = group_names
+    self.command = outputMsg.Robotiq2FGripper_robot_output();
 
 
   def go_to_joint_state(self):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     move_group = self.move_group
@@ -161,13 +168,20 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## thing we want to do is move it to a slightly better configuration.
     # We can get the joint values from the group and adjust some of the values:
     joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = 0
-    joint_goal[1] = -pi/4
-    joint_goal[2] = 0
-    joint_goal[3] = -pi/2
-    joint_goal[4] = 0
-    joint_goal[5] = pi/3
-    #joint_goal[6] = 0
+    if joint_goal[1] > -pi/2:
+        joint_goal[0] = 0
+        joint_goal[1] = -pi
+        joint_goal[2] = pi/2
+        joint_goal[3] = -pi
+        joint_goal[4] = 0
+        joint_goal[5] = pi/3
+    elif joint_goal[1] < -pi/2:
+        joint_goal[0] = 0
+        joint_goal[1] = 0
+        joint_goal[2] = 0
+        joint_goal[3] = 0
+        joint_goal[4] = 0
+        joint_goal[5] = 0
 
     # The go command can be called with joint values, poses, or without any
     # parameters if you have already set the pose or joint target for the group
@@ -183,8 +197,8 @@ class MoveGroupPythonIntefaceTutorial(object):
     return all_close(joint_goal, current_joints, 0.01)
 
 
-  def go_to_pose_goal(self):
-    # Copy class variables to local variables to make the web tutorials more clear.
+  def go_to_pose_goal(self, pose_goal):
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     move_group = self.move_group
@@ -195,12 +209,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## ^^^^^^^^^^^^^^^^^^^^^^^
     ## We can plan a motion for this group to a desired pose for the
     ## end-effector:
-    pose_goal = geometry_msgs.msg.Pose()
-    pose_goal.orientation.w = 1.0
-    pose_goal.position.x = 0.4
-    pose_goal.position.y = 0.1
-    pose_goal.position.z = 0.4
-
+  
     move_group.set_pose_target(pose_goal)
 
     ## Now, we call the planner to compute the plan and execute it.
@@ -214,14 +223,14 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## END_SUB_TUTORIAL
 
     # For testing:
-    # Note that since this section of code will not be included in the tutorials
+    # Note that since this section of code will not be included in the pickplaces
     # we use the class variable rather than the copied state variable
     current_pose = self.move_group.get_current_pose().pose
     return all_close(pose_goal, current_pose, 0.01)
 
 
-  def plan_cartesian_path(self, scale=1):
-    # Copy class variables to local variables to make the web tutorials more clear.
+  def plan_cartesian_path(self, scale=1, waypoints=[]):
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     move_group = self.move_group
@@ -234,24 +243,12 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## for the end-effector to go through. If executing  interactively in a
     ## Python shell, set scale = 1.0.
     ##
-    waypoints = []
-
-    wpose = move_group.get_current_pose().pose
-    wpose.position.z -= scale * 0.1  # First move up (z)
-    wpose.position.y += scale * 0.2  # and sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.x += scale * 0.1  # Second move forward/backwards in (x)
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y -= scale * 0.1  # Third move sideways (y)
-    waypoints.append(copy.deepcopy(wpose))
 
     # We want the Cartesian path to be interpolated at a resolution of 1 cm
     # which is why we will specify 0.01 as the eef_step in Cartesian
     # translation.  We will disable the jump threshold by setting it to 0.0,
     # ignoring the check for infeasible jumps in joint space, which is sufficient
-    # for this tutorial.
+    # for this pickplace.
     (plan, fraction) = move_group.compute_cartesian_path(
                                        waypoints,   # waypoints to follow
                                        0.01,        # eef_step
@@ -264,7 +261,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def display_trajectory(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     robot = self.robot
@@ -291,7 +288,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def execute_plan(self, plan):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     move_group = self.move_group
@@ -310,7 +307,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     box_name = self.box_name
@@ -324,7 +321,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## could get lost and the box will not appear. To ensure that the updates are
     ## made, we wait until we see the changes reflected in the
     ## ``get_attached_objects()`` and ``get_known_object_names()`` lists.
-    ## For the purpose of this tutorial, we call this function after adding,
+    ## For the purpose of this pickplace, we call this function after adding,
     ## removing, attaching or detaching an object in the planning scene. We then wait
     ## until the updates have been made or ``timeout`` seconds have passed
     start = rospy.get_time()
@@ -352,7 +349,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def add_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     box_name = self.box_name
@@ -378,7 +375,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def attach_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     box_name = self.box_name
@@ -407,7 +404,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def detach_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     box_name = self.box_name
@@ -427,7 +424,7 @@ class MoveGroupPythonIntefaceTutorial(object):
 
 
   def remove_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
+    # Copy class variables to local variables to make the web pickplaces more clear.
     # In practice, you should use the class variables directly unless you have a good
     # reason not to.
     box_name = self.box_name
@@ -446,6 +443,83 @@ class MoveGroupPythonIntefaceTutorial(object):
     # We wait for the planning scene to update.
     return self.wait_for_state_update(box_is_attached=False, box_is_known=False, timeout=timeout)
 
+  def genCommand(self, char):
+      """Update the command according to the character entered by the user."""    
+      # command = self.command
+
+      if char == 'a':
+          self.command = outputMsg.Robotiq2FGripper_robot_output();
+          self.command.rACT = 1
+          self.command.rGTO = 1
+          self.command.rSP  = 255
+          self.command.rFR  = 150
+
+      if char == 'r':
+          self.command = outputMsg.Robotiq2FGripper_robot_output();
+          self.command.rACT = 0
+
+      if char == 'c':
+          self.command.rPR = 255
+
+      if char == 'o':
+          self.command.rPR = 0   
+
+      #If the command entered is a int, assign this value to rPRA
+      try: 
+          self.command.rPR = int(char)
+          if self.command.rPR > 255:
+              self.command.rPR = 255
+          if self.command.rPR < 0:
+              self.command.rPR = 0
+      except ValueError:
+          pass                    
+          
+      if char == 'f':
+          self.command.rSP += 25
+          if self.command.rSP > 255:
+              self.command.rSP = 255
+              
+      if char == 'l':
+          self.command.rSP -= 25
+          if self.command.rSP < 0:
+              self.command.rSP = 0
+
+              
+      if char == 'i':
+          self.command.rFR += 25
+          if self.command.rFR > 255:
+              self.command.rFR = 255
+              
+      if char == 'd':
+          self.command.rFR -= 25
+          if self.command.rFR < 0:
+              self.command.rFR = 0
+
+      return self.command
+
+  def publisher(self, char):
+      """Main loop which requests new commands and publish them on the Robotiq2FGripperRobotOutput topic."""
+      pub = rospy.Publisher('Robotiq2FGripperRobotOutput', outputMsg.Robotiq2FGripper_robot_output)
+
+      self.command = self.genCommand(char)            
+      print(self.command)
+      pub.publish(self.command)
+
+      rospy.sleep(0.1)
+
+  def stop_callback(self, data): ### ADDED BY RIKA (2021-05-13)
+      global teleop
+      if data.data == True and teleop == False:
+          move_group = self.move_group
+          move_group.stop()
+          print("Stop arm --> Teleop mode");
+      elif data.data == False and teleop == True:
+          print("Start arm");
+      teleop = data.data
+          
+
+  def stop_listener(self): ### ADDED BY RIKA (2021-05-13)
+      stop_sub = rospy.Subscriber("/arm/stop_arm", Bool, self.stop_callback)
 
 def main():
   try:
@@ -455,52 +529,77 @@ def main():
     print "----------------------------------------------------------"
     print "Press Ctrl-D to exit at any time"
     print ""
-    print "============ Press `Enter` to begin the tutorial by setting up the moveit_commander ..."
+    print "============ Press `Enter` to begin the pickplace by setting up the moveit_commander ..."
     raw_input()
-    tutorial = MoveGroupPythonIntefaceTutorial()
+    pickplace = MoveGroupPythonURPickPlace()
+    pickplace.stop_listener() ### ADDED BY RIKA (2021-05-13)
+    
+    print "============ Press `Enter` to reset the gripper ..."
+    raw_input()
+    pickplace.publisher('r')
+
+    print "============ Press `Enter` to activate the gripper ..."
+    raw_input()
+    pickplace.publisher('a')
+
+    print "============ Press `Enter` to close the gripper ..."
+    raw_input()
+    pickplace.publisher('c')
+    
+    print "============ Press `Enter` to open the gripper ..."
+    raw_input()
+    pickplace.publisher('o')
 
     print "============ Press `Enter` to execute a movement using a joint state goal ..."
     raw_input()
-    tutorial.go_to_joint_state()
+    pickplace.go_to_joint_state()
 
-    print "============ Press `Enter` to execute a movement using a pose goal ..."
+    print "============ Press `Enter` to execute a movement using a joint state goal ..."
     raw_input()
-    tutorial.go_to_pose_goal()
+    pickplace.go_to_joint_state()
 
+    
+    # print "============ Press `Enter` to execute a movement using a pose goal ..."
+    # raw_input()
+    # pickplace.go_to_pose_goal(init_pose_goal)
+    
+    # you can create your own waypoint and run the following code.
     print "============ Press `Enter` to plan and display a Cartesian path ..."
     raw_input()
-    cartesian_plan, fraction = tutorial.plan_cartesian_path()
+    #cartesian_plan, fraction = pickplace.plan_cartesian_path(waypoints=waypoints_1)
+    cartesian_plan, fraction = pickplace.plan_cartesian_path()
 
     print "============ Press `Enter` to display a saved trajectory (this will replay the Cartesian path)  ..."
     raw_input()
-    tutorial.display_trajectory(cartesian_plan)
+    pickplace.display_trajectory(cartesian_plan)
 
     print "============ Press `Enter` to execute a saved path ..."
     raw_input()
-    tutorial.execute_plan(cartesian_plan)
+    pickplace.execute_plan(cartesian_plan)
 
-    print "============ Press `Enter` to add a box to the planning scene ..."
+    # You can control the position of the gripper usingn numbers between 0-255. 0: fully opened, 255: fully closed.
+    print "============ Press `Enter` to close the gripper ..."
     raw_input()
-    tutorial.add_box()
+    pickplace.publisher(150)
+    
+    # you can create your own waypoint and run the following code.
+    #print "============ Press `Enter` to plan and display a Cartesian path ..."
+    #raw_input()
+    #cartesian_plan, fraction = pickplace.plan_cartesian_path(waypoints=waypoints_2)
 
-    print "============ Press `Enter` to attach a Box to the Panda robot ..."
+    print "============ Press `Enter` to display a saved trajectory (this will replay the Cartesian path)  ..."
     raw_input()
-    tutorial.attach_box()
+    pickplace.display_trajectory(cartesian_plan)
 
-    print "============ Press `Enter` to plan and execute a path with an attached collision object ..."
+    print "============ Press `Enter` to execute a saved path ..."
     raw_input()
-    cartesian_plan, fraction = tutorial.plan_cartesian_path(scale=-1)
-    tutorial.execute_plan(cartesian_plan)
+    pickplace.execute_plan(cartesian_plan)
 
-    print "============ Press `Enter` to detach the box from the Panda robot ..."
+    print "============ Press `Enter` to open the gripper ..."
     raw_input()
-    tutorial.detach_box()
+    pickplace.publisher('o')
 
-    print "============ Press `Enter` to remove the box from the planning scene ..."
-    raw_input()
-    tutorial.remove_box()
-
-    print "============ Python tutorial demo complete!"
+    print "============ Python pickplace complete!"
   except rospy.ROSInterruptException:
     return
   except KeyboardInterrupt:
