@@ -3,6 +3,10 @@
 # 2.12 Final Project
 # Phillip Daniel April 2021
 
+# Modifications from Ava, 5/4/2021
+# Add ability to specify approach distance for each tag
+# Add switch to accommodate user input
+
 import rospy
 import numpy as np
 from nav_msgs.msg import Odometry
@@ -76,14 +80,17 @@ def viewedTagRelPos(data):
 
 	global tagPose
 	global tagID
+	global tagDist # desired approach distance associated with the tag
 	tagPose = None
 	tagID = None
+	tagDists = [0,0.5,0.5,0.5,0.25] # index of list corresponds to tag ID, entry corresponds to approach distance
 	for detections in data.detections:
 		#print('Detection IDs', detections.id)
 		for idseen in detections.id:
 			if idseen == 0 or idseen == 1 or idseen == 2 or idseen == 3 or idseen == 4 or idseen == 5 :
 				tagID = idseen
 				tagPose = detections.pose
+				tagDist = tagDists(idseen) # Assign tag approach distance based on the tag you're looking at
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
@@ -97,6 +104,7 @@ def approach():
 		# Argument
 			# targetTagID - The ID of the tag that we wish to point the robot's camera towards
 	global tagPose
+	global tagDist
 	#relX=tagPose.pose.pose.position.x
 	#relZ=tagPose.pose.pose.position.z
 	approached=False
@@ -120,12 +128,12 @@ def approach():
 			#print('Approaching z=', relZ)
 
 			vRel=np.array([relZ,relX])
-			relPosNorm=np.linalg.norm(vRel)
+			relPosNorm=np.linalg.norm(vRel) # This relative position vector only involves X,Z, not orientation (assumes X within range based on line 59
 			relPosUnitVec=vRel/relPosNorm
 			thetaDot=0
 			print relPosNorm
 			
-			if relPosNorm > .5:
+			if relPosNorm > tagDist: # Modified from default 0.5 to adapt approach distance to the specific tag
 				zDot=relPosUnitVec[0]
 				xDot=relPosUnitVec[1]
 			else:
@@ -152,6 +160,9 @@ print("Subscriber setup")
 virtualJoy_pub = rospy.Publisher("/joy/cmd", JoyCmd, queue_size=1)
 print("Publisher setup")
 
+mobileReady_pub = rospy.Subscriber("/mobile_ready", bool) # Ready for mobile?
+armReady_pub = rospy.Publisher("/arm_ready", bool, queue_size=1) # Ready for arm?
+
 r = rospy.Rate(50)
 print("ROS rate setup")
 
@@ -159,20 +170,31 @@ jcv = JoyCmd()
 
 # This is the main loop
 while not rospy.is_shutdown():
+# Approach tags in order 1, 2, 3, 4, 5 with their desired approach distances. Send command to arm team
+# Maybe wrap in subscribe to 'ready for mobile'==True
+	armReady_pub.publish(False) # prevent arm from moving - check with arm team if they actually want this?
+
+	tagIDs = [1,2,3,4,5]
+	# subscribe to user input, look for a number in tagIDs (or an input from the GUI)
+	# if receiving_input_that's_valid:
+	#	target = input
+	# else:
+	# 	target = 1 (start from the beginning)
+	target = 1 # Which tag are we pointing at? Make this user-modifyable
 	print("Start loop")
-	pointAtTag(0)
-	approach()
-	pointAtTag(1)
-	approach()
-	pointAtTag(2)
-	approach()
-	pointAtTag(3)
-	approach()
+	while target in tagIDs:
+		pointAtTag(target)
+		approach()
+		target++ # Move on to the next tag
 	print 'Done'
+	if target == 5:
+		# Publish to 'ready for arm' node
+		armReady_pub.publish(True)
 	
 	r = rospy.Rate(1)
 	while not rospy.is_shutdown():
 		r.sleep()
+	
 
 jcv.axis1 = 0.0
 jcv.axis2 = 0.0
