@@ -11,6 +11,7 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist
 from math import atan2
+from std_msgs.msg import Bool, Int32
 
 import serial
 from apriltag_ros.msg import AprilTagDetectionArray
@@ -89,8 +90,10 @@ def viewedTagRelPos(data):
 			if idseen == 0 or idseen == 1 or idseen == 2 or idseen == 3 or idseen == 4 or idseen == 5 :
 				tagID = idseen
 				tagPose = detections.pose
-				tagAppDist = tagAppDists(idseen) # Assign tag approach distance based on the tag you're looking at
-				tagRetDist = tagRetDists(idseen)
+				global tagAppDist
+				global tagRetDist
+				tagAppDist = tagAppDists[idseen] # Assign tag approach distance based on the tag you're looking at
+				tagRetDist = tagRetDists[idseen]
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
@@ -145,13 +148,15 @@ def approach():
 			thetaDot=0
 			print relPosNorm
 			
-			if relPosNorm > tagDist: # Modified from default 0.5 to adapt approach distance to the specific tag
+			if relPosNorm > tagAppDist: # Modified from default 0.5 to adapt approach distance to the specific tag
 				zDot=relPosUnitVec[0]
 				xDot=relPosUnitVec[1]
+				at_target_pub.publish(0)
 			else:
 				zDot=0
 				xDot=0
 				approached=True
+				at_target_pub.publish(tagID)
 		else:
 			zDot=0
 			xDot=0
@@ -199,13 +204,15 @@ def retreat():
 			thetaDot=0
 			print relPosNorm
 			
-			if relPosNorm > tagDist: # Modified from default 0.5 to adapt approach distance to the specific tag
+			if relPosNorm < tagRetDist: # Modified from default 0.5 to adapt approach distance to the specific tag
 				zDot=relPosUnitVec[0]
 				xDot=relPosUnitVec[1]
+				at_target_pub.publish(0)
 			else:
 				zDot=0
 				xDot=0
 				retreated=True
+				at_target_pub.publish(tagID)
 		else:
 			zDot=0
 			xDot=0
@@ -226,11 +233,11 @@ print("Subscriber setup")
 virtualJoy_pub = rospy.Publisher("/joy/cmd", JoyCmd, queue_size=1)
 print("Publisher setup")
 
-drive_to_this_tag_sub = rospy.Subscriber("/drive_to_this_tag", int, setTarget)
-set_current_tag_sub = rospy.Subscriber("/set_current_tag", int, setTarget) # for testing
-approach_retreat_sub = rospy.Subscriber("/approach_retreat", bool, setApproach) # True=approach
-stop_automode = rospy.Subscriber("/stop_automode", bool, stopAuto)
-at_target_pub = rospy.Publisher("/at_target", bool, queue_size=1) # Ready for arm?
+drive_to_this_tag_sub = rospy.Subscriber("/drive_to_this_tag", Int32, setTarget)
+set_current_tag_sub = rospy.Subscriber("/set_current_tag", Int32, setTarget) # for testing
+approach_retreat_sub = rospy.Subscriber("/approach_retreat", Bool, setApproach) # True=approach
+stop_automode = rospy.Subscriber("/stop_automode", Bool, stopAuto)
+at_target_pub = rospy.Publisher("/at_target", Int32, queue_size=1)
 
 r = rospy.Rate(50)
 print("ROS rate setup")
@@ -242,6 +249,7 @@ stopAuto = False # set for testing
 # This is the main loop
 while not rospy.is_shutdown():	
 
+	target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
@@ -249,7 +257,6 @@ while not rospy.is_shutdown():
 			approach()
 		else:
 			retreat()
-		at_target_pub.publish(True) # Will need state machine to set to false when target is updated
 		print 'Done'
 		
 	r = rospy.Rate(1)
