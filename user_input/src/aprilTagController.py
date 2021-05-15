@@ -11,7 +11,7 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist
 from math import atan2
-from std_msgs.mst import Bool, Int32
+from std_msgs.msg import Bool, Int32
 
 import serial
 from apriltag_ros.msg import AprilTagDetectionArray
@@ -90,8 +90,10 @@ def viewedTagRelPos(data):
 			if idseen == 0 or idseen == 1 or idseen == 2 or idseen == 3 or idseen == 4 or idseen == 5 :
 				tagID = idseen
 				tagPose = detections.pose
-				tagAppDist = tagAppDists(idseen) # Assign tag approach distance based on the tag you're looking at
-				tagRetDist = tagRetDists(idseen)
+				global tagAppDist
+				global tagRetDist
+				tagAppDist = tagAppDists[idseen] # Assign tag approach distance based on the tag you're looking at
+				tagRetDist = tagRetDists[idseen]
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
@@ -247,6 +249,7 @@ stopAuto = False # set for testing
 # This is the main loop
 while not rospy.is_shutdown():	
 
+	target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
