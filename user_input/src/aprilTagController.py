@@ -3,9 +3,7 @@
 # 2.12 Final Project
 # Phillip Daniel April 2021
 
-# Modifications from Ava, 5/4/2021
-# Add ability to specify approach distance for each tag
-# Add switch to accommodate user input
+# Modifications from Ava, 5/15/2021
 
 import rospy
 import numpy as np
@@ -83,22 +81,36 @@ def viewedTagRelPos(data):
 	global tagDist # desired approach distance associated with the tag
 	tagPose = None
 	tagID = None
-	tagDists = [0,0.5,0.5,0.5,0.25] # index of list corresponds to tag ID, entry corresponds to approach distance
+	tagAppDists = [0,0.5,0.5,0.5,0.25] # index of list corresponds to tag ID, entry corresponds to approach distance
+	tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
 	for detections in data.detections:
 		#print('Detection IDs', detections.id)
 		for idseen in detections.id:
 			if idseen == 0 or idseen == 1 or idseen == 2 or idseen == 3 or idseen == 4 or idseen == 5 :
 				tagID = idseen
 				tagPose = detections.pose
-				tagDist = tagDists(idseen) # Assign tag approach distance based on the tag you're looking at
+				tagAppDist = tagAppDists(idseen) # Assign tag approach distance based on the tag you're looking at
+				tagRetDist = tagRetDists(idseen)
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
 			else: 
 				print('Check for pose of tags')
 
+def setTarget(data):
+	global target
+	target = data
+
+def setApproach(data):
+	global appret
+	appret = data
+
+def stopAuto(data):
+	global stopAuto
+	stopAuto = data
+
 def approach():
-	# Description: Drive within a certian distace of the tag 'targetTagID'
+	# Description: Drive within a certain distace of the tag 'targetTagID'
 		# Return
 			# null
 		# Argument
@@ -150,6 +162,60 @@ def approach():
 		virtualJoy_pub.publish(jcv)
 		r.sleep()
 	print('Arrived at tag')
+
+def retreat():
+	# Description: Drive within a certian distace of the tag 'targetTagID'
+		# Return
+			# null
+		# Argument
+			# targetTagID - The ID of the tag that we wish to point the robot's camera towards
+	global tagPose
+	global tagDist
+	#relX=tagPose.pose.pose.position.x
+	#relZ=tagPose.pose.pose.position.z
+	retreated=False
+	
+	jcv = JoyCmd()
+	jcv.axis3 = 0.0
+	jcv.btn1 = 0.0
+	jcv.btn2 = 0.0
+	jcv.btn3 = 0.0
+	
+	while retreated==False:			
+
+		if rospy.is_shutdown():
+			break
+
+		if tagPose != None:
+			relX=tagPose.pose.pose.position.x
+			relZ=tagPose.pose.pose.position.z
+			
+			#print('Approaching x=', relX)
+			#print('Approaching z=', relZ)
+
+			vRel=np.array([relZ,relX])
+			relPosNorm=np.linalg.norm(vRel) # This relative position vector only involves X,Z, not orientation (assumes X within range based on line 59
+			relPosUnitVec=vRel/relPosNorm
+			thetaDot=0
+			print relPosNorm
+			
+			if relPosNorm > tagDist: # Modified from default 0.5 to adapt approach distance to the specific tag
+				zDot=relPosUnitVec[0]
+				xDot=relPosUnitVec[1]
+			else:
+				zDot=0
+				xDot=0
+				retreated=True
+		else:
+			zDot=0
+			xDot=0
+			print 'lost tag'
+
+		jcv.axis1 = xDot
+		jcv.axis2 = zDot
+		virtualJoy_pub.publish(jcv)
+		r.sleep()
+	print('Retreated from tag')
 	
 	
 rospy.init_node('TagChaser', anonymous=True)
@@ -160,41 +226,35 @@ print("Subscriber setup")
 virtualJoy_pub = rospy.Publisher("/joy/cmd", JoyCmd, queue_size=1)
 print("Publisher setup")
 
-mobileReady_pub = rospy.Subscriber("/mobile_ready", bool) # Ready for mobile?
-armReady_pub = rospy.Publisher("/arm_ready", bool, queue_size=1) # Ready for arm?
+drive_to_this_tag_sub = rospy.Subscriber("/drive_to_this_tag", int, setTarget)
+set_current_tag_sub = rospy.Subscriber("/set_current_tag", int, setTarget) # for testing
+approach_retreat_sub = rospy.Subscriber("/approach_retreat", bool, setApproach) # True=approach
+stop_automode = rospy.Subscriber("/stop_automode", bool, stopAuto)
+at_target_pub = rospy.Publisher("/at_target", bool, queue_size=1) # Ready for arm?
 
 r = rospy.Rate(50)
 print("ROS rate setup")
 
 jcv = JoyCmd()
+appret = True # set for testing
+stopAuto = False # set for testing
 
 # This is the main loop
-while not rospy.is_shutdown():
-# Approach tags in order 1, 2, 3, 4, 5 with their desired approach distances. Send command to arm team
-# Maybe wrap in subscribe to 'ready for mobile'==True
-	armReady_pub.publish(False) # prevent arm from moving - check with arm team if they actually want this?
+while not rospy.is_shutdown():	
 
-	tagIDs = [1,2,3,4,5]
-	# subscribe to user input, look for a number in tagIDs (or an input from the GUI)
-	# if receiving_input_that's_valid:
-	#	target = input
-	# else:
-	# 	target = 1 (start from the beginning)
-	target = 1 # Which tag are we pointing at? Make this user-modifyable
-	print("Start loop")
-	while target in tagIDs:
+	if not stopAuto:
+		print("Start aprilTagController")
 		pointAtTag(target)
-		approach()
-		target++ # Move on to the next tag
-	print 'Done'
-	if target == 5:
-		# Publish to 'ready for arm' node
-		armReady_pub.publish(True)
-	
+		if appret:
+			approach()
+		else:
+			retreat()
+		at_target_pub.publish(True) # Will need state machine to set to false when target is updated
+		print 'Done'
+		
 	r = rospy.Rate(1)
 	while not rospy.is_shutdown():
 		r.sleep()
-	
 
 jcv.axis1 = 0.0
 jcv.axis2 = 0.0
