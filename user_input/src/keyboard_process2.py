@@ -32,6 +32,8 @@ anything else : stop
 Hold down 'alt' for 1/4 speed
 ___________________________________________
 Press 1-5 to set the current tag
+Press t to set ready_for_arm_mov = True, Press f for False
+Press r to set ready_for_veh_mov = True, Press d for False
 
 CTRL-C to quit
 """
@@ -40,15 +42,30 @@ class keyboard_obj(object):
 
 	def __init__(self):
 		rospy.init_node('keyboard', anonymous=True)
+
+		#Publishers
 		self.joyconnPub= rospy.Publisher('/joy/connected', Bool, queue_size = 1)
 		self.joycmdPub = rospy.Publisher('/joy/cmd', JoyCmd, queue_size = 10)
-		self.setTagPub= rospy.Publisher('set_current_tag', Int32, queue_size = 1)
+		self.setTagPub = rospy.Publisher('set_current_tag', Int32, queue_size = 1)
+		self.setReadyArmPub = rospy.Publisher('ready_for_arm_mov', Bool, queue_size = 1)
+		self.setReadyVehPub = rospy.Publisher('ready_for_veh_mov', Bool, queue_size = 1)
+
 
 		r = rospy.Rate(60)
 		self.cmd_msg = JoyCmd()
 		self.conn_msg = Bool()
 		self.conn_msg.data = True
-		self.set_current_tag = int()
+
+
+		self.set_current_tag_msg = int()
+
+		self.setReadyArm_msg = Bool()
+		self.setReadyArm_msg.data = False
+		self.setReadyVeh_msg = Bool()
+		self.setReadyVeh_msg.data = False
+
+
+
 		print(msg)
 
 		while not rospy.is_shutdown():
@@ -62,8 +79,25 @@ class keyboard_obj(object):
 			#Detect a commanded tag number
 			for number in range(1,6):
 				if keyboard.is_pressed( str(number) ):
-					self.set_current_tag = int(number)
-					self.setTagPub.publish(self.set_current_tag)
+					self.set_current_tag_msg = int(number)
+					self.setTagPub.publish(self.set_current_tag_msg)
+
+			if keyboard.is_pressed('t'):
+				self.setReadyArm_msg.data = True
+				self.setReadyArmPub.publish(self.setReadyArm_msg)
+
+			if keyboard.is_pressed('f'):
+				self.setReadyArm_msg.data = False
+				self.setReadyArmPub.publish(self.setReadyArm_msg)
+
+			if keyboard.is_pressed('r'):
+				self.setReadyVeh_msg.data = True
+				self.setReadyVehPub.publish(self.setReadyVeh_msg)
+
+			if keyboard.is_pressed('d'):
+				self.setReadyVeh_msg.data = False
+				self.setReadyVehPub.publish(self.setReadyVeh_msg)
+
 
 			r.sleep()
 
