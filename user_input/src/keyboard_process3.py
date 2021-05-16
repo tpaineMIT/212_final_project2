@@ -128,9 +128,9 @@ class keyboard_obj(object):
 		#Detect forward and backward keys assigned to 'w' and 's' 
 		#-> changed to 'i' and ',', (might need to the axis number was changed from 1 to 2)
 		if 'i' in char:
-			msg.axis1 =  1.0
+			msg.axis2 =  1.0
 		elif ',' in char:
-			msg.axis1 = msg.axis1 - 1.0
+			msg.axis2 = msg.axis2 - 1.0
 
 
 		#Detect rotation keys 'q' for counterclockwise, 'e' for clockwise
@@ -146,16 +146,16 @@ class keyboard_obj(object):
 		#Detect forward and backward keys assigned to 'w' and 's' 
 		#-> changed to 'I' and '<', (might need to the axis number was changed from 1 to 2)
 		if 'I' in char:
-			msg.axis1 =  1.0
+			msg.axis2 =  1.0
 		elif '<' in char:
-			msg.axis1 = msg.axis1 - 1.0
+			msg.axis2 = msg.axis2 - 1.0
 
 		#Detect left and right keys 'a' and 'd'
 		#-> changed to 'J' and 'L'
 		elif 'J' in char:
-			msg.axis2 =  1.0
+			msg.axis1 =  1.0
 		elif 'L' in char:
-			msg.axis2 = msg.axis2 - 1.0
+			msg.axis1 = msg.axis1 - 1.0
 
 		#Detect corner keys to move diagonally
 		elif 'U' in char:

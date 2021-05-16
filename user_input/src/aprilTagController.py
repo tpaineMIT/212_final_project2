@@ -31,9 +31,9 @@ tagPose = None
 tagID = None
 
 # Approach and retract distances
-tagAppDists = [0,0.5,0.5,0.5,0.25]      # index of list corresponds to tag ID, entry corresponds to approach distance
+tagAppDists = [0,0.5,0.5,0.5,0.27]      # index of list corresponds to tag ID, entry corresponds to approach distance
 tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
-tagAppDist  = 5.0  # initialize to something large to start
+tagAppDist  = 0.27  # initialize to something large to start
 tagRetDist  = 5.0  # initialize to something large to start
 
 # Target tags, control booleans, etc. - the node subscribes to this information.
@@ -72,7 +72,7 @@ def pointAtTag(targetTagID):
 		if targetTagID == tagID and tagPose != None: # We have found the tag that we were looking for.
 			relX=tagPose.pose.pose.position.x
 			print('tag position = ', relX)
-			if relX<.2 and relX>-.2: # If we are pointing at the tag  -> original values were .05
+			if relX<.05 and relX>-.05: # If we are pointing at the tag  -> original values were .05
 				thetaDot=0
 				pointed = True
 			else:
@@ -116,8 +116,8 @@ def viewedTagRelPos(data):
 				global tagAppDist
 				global tagRetDist
 
-				tagAppDist = tagAppDists[idseen] # Assign tag approach distance based on the tag you're looking at
-				tagRetDist = tagRetDists[idseen]
+				tagAppDist = tagAppDists[(idseen-1)] # Assign tag approach distance based on the tag you're looking at
+				tagRetDist = tagRetDists[(idseen-1)]
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
@@ -161,6 +161,7 @@ def approach():
 
 		if rospy.is_shutdown():
 			break
+		#print(tagPose)
 
 		if tagPose != None:
 			relX=tagPose.pose.pose.position.x
@@ -218,12 +219,13 @@ def retreat():
 		if rospy.is_shutdown():
 			break
 
-		if tagPose != None:
+		if tagPose != None:	
+			print 'starting to move'
 			relX=tagPose.pose.pose.position.x
 			relZ=tagPose.pose.pose.position.z
 			
-			#print('Approaching x=', relX)
-			#print('Approaching z=', relZ)
+			print 'Approaching x=', relX 
+			print 'Approaching z=', relZ 
 
 			vRel=np.array([relZ,relX])
 			relPosNorm=np.linalg.norm(vRel) # This relative position vector only involves X,Z, 
@@ -283,7 +285,7 @@ stopAuto = False # set for testing
 # This is the main loop
 while not rospy.is_shutdown():	
 
-	target = 3 #Hardcode to whatever tag is in video feed for testing
+	target = 5 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
