@@ -127,17 +127,18 @@ def viewedTagRelPos(data):
 def setTarget(data):
 	# include 'global' since this is a callback
 	global target
-	target = data
+	target = data.data
 
 def setApproach(data):
 	# include 'global' since this is a callback
 	global appret
-	appret = data
+	appret = data.data
 
 def stopAuto(data):
 	# include 'global' since this is a callback
 	global stopAuto
-	stopAuto = data
+	stopAuto = data.data
+
 
 def approach():
 	# Description: Drive within a certain distace of the tag 'targetTagID'
