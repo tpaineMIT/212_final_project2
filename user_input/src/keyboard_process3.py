@@ -159,17 +159,17 @@ class keyboard_obj(object):
 
 		#Detect corner keys to move diagonally
 		elif 'U' in char:
-			msg.axis1 = 0.71
-			msg.axis2 =  0.71 
+			msg.axis2 = 0.71
+			msg.axis1 =  0.71 
 		elif 'O' in char:
-			msg.axis1 = 0.71
-			msg.axis2 =  msg.axis2 - 0.71 
+			msg.axis2 = 0.71
+			msg.axis1 =  msg.axis1 - 0.71 
 		elif '>' in char:
-			msg.axis1 =  msg.axis1 - 0.71
-			msg.axis2 =  msg.axis2 - 0.71 
+			msg.axis2 =  msg.axis2 - 0.71
+			msg.axis1 =  msg.axis1 - 0.71 
 		elif 'M' in char:
-			msg.axis1 =  msg.axis1 - 0.71
-			msg.axis2 =  0.71 
+			msg.axis2 =  msg.axis2 - 0.71
+			msg.axis1 =  0.71 
 
 
 

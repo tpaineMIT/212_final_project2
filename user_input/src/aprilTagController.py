@@ -161,7 +161,6 @@ def approach():
 
 		if rospy.is_shutdown():
 			break
-		#print(tagPose)
 
 		if tagPose != None:
 			relX=tagPose.pose.pose.position.x
@@ -220,7 +219,7 @@ def retreat():
 			break
 
 		if tagPose != None:	
-			print 'starting to move'
+	
 			relX=tagPose.pose.pose.position.x
 			relZ=tagPose.pose.pose.position.z
 			

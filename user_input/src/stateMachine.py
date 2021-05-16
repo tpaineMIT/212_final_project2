@@ -13,39 +13,62 @@ from apriltag_ros.msg import AprilTagDetectionArray
 from user_input.msg import Velocity, JoyCmd
 from std_msgs.mst import Bool, Int32
 
+########################################################################
 # global variables
 appret = True
 atTarget = 0
 setTarget = 1
 readyVeh = False # Wait for user to update ready
 
-def atTarget(data):
-	atTarget = data
-def setAppRet(data):
-	appret = data
-def setTarget(data):
-	setTarget = data
-def readyVeh(data):
-	readyVeh = data
+########################################################################
+
+def atTarget(msg):
+	# include 'global' since it is in a callback
+	global atTarget
+	atTarget = msg.data
+
+def setAppRet(msg):
+	# include 'global' since it is in a callback
+	global appret
+	appret = msg.data
+
+def setTarget(msg):
+	# include 'global' since it is in a callback
+	global setTarget
+	setTarget = msg.data
+
+def readyVeh(msg):
+	# include 'global' since it is in a callback
+	global readyVeh
+	readyVeh = msg.data
+
 def viewedTagID(data):
+	# include 'global' since it is in a callback
 	global viewedTag
 	viewedTag = data.detections.id[0] # Assumes only one tag in field of view
 
+################################################################################
+### Initialize ros node and advertise sub and pubs
+
 rospy.init_node('StateMachine', anonymous=True)
 
-drive_to_this_tag_pub = rospy.Publisher("/drive_to_this_tag", Int32, queue_size=1)
-approach_retreat_pub = rospy.Publisher("/approach_retreat", Bool, queue_size=1) # True=approach
-ready_for_arm_mov_pub = rospy.Publisher("/ready_for_arm_mov", Bool, queue_size=1)
+# Publishers 
+drive_to_this_tag_pub	 = rospy.Publisher("/drive_to_this_tag", Int32, queue_size=1)
+approach_retreat_pub	 = rospy.Publisher("/approach_retreat", Bool, queue_size=1) # True=approach
+ready_for_arm_mov_pub	 = rospy.Publisher("/ready_for_arm_mov", Bool, queue_size=1)
 
-apriltag_sub = rospy.Subscriber("/tag_detections", AprilTagDetectionArray, viewedTagID)
-ready_for_veh_mov_sub = rospy.Subscriber("/ready_for_veh_mov", Bool, readyVeh)
+# Subscribers 
+apriltag_sub 		 = rospy.Subscriber("/tag_detections", AprilTagDetectionArray, viewedTagID)
+ready_for_veh_mov_sub	 = rospy.Subscriber("/ready_for_veh_mov", Bool, readyVeh)
 set_approach_retreat_sub = rospy.Subscriber("/set_approach_retreat", Bool, setAppRet)
-set_current_tag_sub = rospy.Subscriber("/set_current_tag", Int32, setTarget)
-at_target_sub = rospy.Subscriber("/at_target", Int32, atTarget)
+set_current_tag_sub	 = rospy.Subscriber("/set_current_tag", Int32, setTarget)
+at_target_sub 		 = rospy.Subscriber("/at_target", Int32, atTarget)
 
 r = rospy.Rate(50)
 print("ROS rate setup")
 
+
+############################################################################
 # This is the main loop
 while not rospy.is_shutdown(): # need to include user interrupt? maybe user interrupt is just setting readyVeh=False?
 	if readyVeh:
