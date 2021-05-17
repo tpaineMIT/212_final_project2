@@ -8,6 +8,7 @@
 
 import rospy
 import numpy as np
+import math
 
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
@@ -25,6 +26,7 @@ from user_input.msg import Velocity, JoyCmd
 x = 0.0
 y = 0.0
 theta 	= 0.0
+speed = 0.5
 
 # Tag information
 tagPose = None
@@ -42,6 +44,30 @@ appret 	= True    # Approach return boolean
 stopAuto = False   # Stop autonomous mode
 
 #################################################################
+
+
+def euler_from_quaternion(x, y, z, w):
+        """
+	From https://automaticaddison.com/how-to-convert-a-quaternion-into-euler-angles-in-python/        
+	Convert a quaternion into euler angles (roll, pitch, yaw)
+        roll is rotation around x in radians (counterclockwise)
+        pitch is rotation around y in radians (counterclockwise)
+        yaw is rotation around z in radians (counterclockwise)
+        """
+        t0 = +2.0 * (w * x + y * z)
+        t1 = +1.0 - 2.0 * (x * x + y * y)
+        roll_x = math.atan2(t0, t1)
+     
+        t2 = +2.0 * (w * y - z * x)
+        t2 = +1.0 if t2 > +1.0 else t2
+        t2 = -1.0 if t2 < -1.0 else t2
+        pitch_y = math.asin(t2)
+     
+        t3 = +2.0 * (w * z + x * y)
+        t4 = +1.0 - 2.0 * (y * y + z * z)
+        yaw_z = math.atan2(t3, t4)
+     
+        return roll_x, pitch_y, yaw_z # in radians
 
 
 def pointAtTag(targetTagID):
@@ -72,7 +98,7 @@ def pointAtTag(targetTagID):
 		if targetTagID == tagID and tagPose != None: # We have found the tag that we were looking for.
 			relX=tagPose.pose.pose.position.x
 			print('tag position = ', relX)
-			if relX<.05 and relX>-.05: # If we are pointing at the tag  -> original values were .05
+			if relX<.4 and relX>-.4: # If we are pointing at the tag  -> original values were .05
 				thetaDot=0
 				pointed = True
 			else:
@@ -165,26 +191,67 @@ def approach():
 		if tagPose != None:
 			relX=tagPose.pose.pose.position.x
 			relZ=tagPose.pose.pose.position.z
-			
-			#print('Approaching x=', relX)
-			#print('Approaching z=', relZ)
+			q_x = tagPose.pose.pose.orientation.x
+			q_y = tagPose.pose.pose.orientation.y
+			q_z = tagPose.pose.pose.orientation.z
+			q_w = tagPose.pose.pose.orientation.w
+			relRollX, relPitchY, relYawZ = euler_from_quaternion(q_x, q_y, q_z, q_w)
 
-			vRel=np.array([relZ,relX])
+			xDot = 0.0
+			zDot = 0.0
+			thetaDot = 0.0			
+
+			
+			print('Approaching x=', relX)
+			print('Approaching z=', relZ)
+			print('Approaching relYawZ =', relYawZ)
+
+			# Error criteria for z distance away is 'tagAppDist'
+			# Error criteria for x distance away is hard coded below
+			xMov = 0.0
+			zMov = 0.0
+			yawMov = 0.0
+
+			if abs(relX) > .01:
+				# keep moving in the x (sideways) until error is small
+				xMov = relX
+				
+			if abs(relZ) > tagAppDist:
+				# keep moving in the z (forwards) until within range
+				zMov = relZ
+			if abs(relYawZ) > .1:
+				# keep rotating about towards the center of the tag
+				yawMov = relYawZ
+
+
+			# normalize the commands
+			vRel=np.array([xMov,zMov])
 			relPosNorm=np.linalg.norm(vRel) # This relative position vector only involves X,Z, 
 							# not orientation (assumes X within range based on line 59
-			relPosUnitVec=vRel/relPosNorm
-			thetaDot=0
-			#print relPosNorm
 			
-			if relPosNorm > tagAppDist: # Modified from default 0.5 to adapt approach distance to the specific tag
-				zDot=relPosUnitVec[0]
-				xDot=relPosUnitVec[1]
-				at_target_pub.publish(0)
-			else:
+			if relPosNorm > 0:
+				# we need to move
+				# Calculate speed and cap it
+				speed = 0.2* relPosNorm
+				if speed > .66:
+					speed = .66
+
+				xDot = -xMov / relPosNorm * speed
+				zDot = zMov / relPosNorm * speed
+
+			if yawMov > 0:
+				# we need to rotate
+				thetaDot = yawMov * .1  # hard code for now
+
+
+			if (relPosNorm == 0.0) and (yawMov == 0.0):
+				# We have arrived - both translation and rotation errors are within limits	
+				xDot=0			
 				zDot=0
-				xDot=0
+				thetaDot = 0.0
 				approached=True
 				at_target_pub.publish(tagID)
+
 		else:
 			zDot=0
 			xDot=0
@@ -192,9 +259,11 @@ def approach():
 
 		jcv.axis1 = xDot
 		jcv.axis2 = zDot
+		jcv.axis3 = thetaDot
 		virtualJoy_pub.publish(jcv)
 		r.sleep()
 	print('Arrived at tag')
+
 
 def retreat():
 	# Description: Drive within a certian distace of the tag 'targetTagID'
@@ -284,7 +353,7 @@ stopAuto = False # set for testing
 # This is the main loop
 while not rospy.is_shutdown():	
 
-	target = 5 #Hardcode to whatever tag is in video feed for testing
+	target = 3 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
