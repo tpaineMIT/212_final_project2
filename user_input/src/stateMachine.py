@@ -115,6 +115,8 @@ while not rospy.is_shutdown():
 				target++
 		# If while loop is over, then we must have successfully docked
 		ready_for_arm_mov_pub.publish(True)
+		appret = False
+		readyVeh = False # wait for arm team or user to publish /ready_for_veh_mov to True again
 		
 		while not appret and not (viewedTag==3 and atTarget==3): # While we need movement in retreat
 			# Send movement directions to aprilTagController.py
