@@ -11,7 +11,7 @@ import numpy as np
 import serial
 from apriltag_ros.msg import AprilTagDetectionArray
 from user_input.msg import Velocity, JoyCmd
-from std_msgs.mst import Bool, Int32
+from std_msgs.msg import Bool, Int32
 
 ########################################################################
 # global variables
@@ -19,6 +19,7 @@ appret = True
 atTarget = 0
 target = 1
 readyVeh = False # Wait for user to update ready
+viewedTag = 0
 
 ########################################################################
 
@@ -34,7 +35,7 @@ def setAppRet(msg):
 
 def setTarget(msg):
 	# include 'global' since it is in a callback
-	global setTarget
+	global target
 	target = msg.data
 
 def readyVeh(msg):
@@ -45,7 +46,11 @@ def readyVeh(msg):
 def viewedTagID(data):
 	# include 'global' since it is in a callback
 	global viewedTag
-	viewedTag = data.detections.id[0] # Assumes only one tag in field of view
+	
+	for detections in data.detections:
+		for idseen in detections.id:
+			viewedTag = idseen  # There must be a better way to do this in python.
+
 
 ################################################################################
 ### Initialize ros node and advertise sub and pubs
@@ -70,6 +75,7 @@ print("ROS rate setup")
 
 ############################################################################
 # This is the main loop
+
 while not rospy.is_shutdown():
 # Potential for user interrupt: set readyVeh to False until changes are made (maybe any keypress in teleop while readyVeh=True automatically switches readyVeh to False?) Then user can adjust /set_current_tag, /set_approach_retreat, or reset /at_target if necessary
 
@@ -89,45 +95,56 @@ while not rospy.is_shutdown():
 			# Send movement directions to aprilTagController.py
 			approach_retreat_pub.publish(appret) # Approach or retreat?
 			drive_to_this_tag_pub.publish(target) # Which tag to approach/retreat to/from?
-			
+
+			if appret:
+				print("Approach target ", target)
+			else:
+				print("Retreat from target ", target)
+			 
 			# When we've arrived at the target, increment target according to whether we're approaching or retreating
 			if atTarget==target:
+				
 				# If approaching, increment target by 1
 				if appret and target<5: # need to include and target<5 to move successful docking into next loop to be caught by outer if statement
-					target++
+					target+=1
 				elif appret and target==5: # arrived at docking so want to move to next time step through loop
 					break
 				# If retreating and not yet reached finish line, decrement target by 1
 				elif target>3 and not appret:
-					target--
+					target-=1
 				# Otherwise, successfully docked or finished and want to move to next step in loop
 
 			# Otherwise, atTarget != target so approach/retreat failed / not yet complete. Want to continue to next step in loop, so do no action where the else would be
 
 
+	
+
+
+	r.sleep()
+	
+
+
+
 # Same logic but in while loop format
-	if readyVeh:
-		while appret and not (viewedTag==5 and atTarget==5): # While we need movement in approach
-			# Send movement directions to aprilTagController.py
-			approach_retreat_pub.publish(appret) # Approach or retreat?
-			drive_to_this_tag_pub.publish(target) # Which tag to approach/retreat to/from?
-			if atTarget==target:
-				target++
-		# If while loop is over, then we must have successfully docked
-		ready_for_arm_mov_pub.publish(True)
-		appret = False
-		readyVeh = False # wait for arm team or user to publish /ready_for_veh_mov to True again
-		
-		while not appret and not (viewedTag==3 and atTarget==3): # While we need movement in retreat
-			# Send movement directions to aprilTagController.py
-			approach_retreat_pub.publish(appret) # Approach or retreat?
-			drive_to_this_tag_pub.publish(target) # Which tag to approach/retreat to/from?
-			if atTarget==target:
-				target--
-		# If while loop is over, then we must have successfully retreated
+#	if readyVeh:
+#		while appret and not (viewedTag==5 and atTarget==5): # While we need movement in approach3
+#			# Send movement directions to aprilTagController.py
+#			approach_retreat_pub.publish(appret) # Approach or retreat?
+#			drive_to_this_tag_pub.publish(target) # Which tag to approach/retreat to/from?
+#			if atTarget==target:
+#				target++
+#		# If while loop is over, then we must have successfully docked
+#		ready_for_arm_mov_pub.publish(True)
+#		appret = False
+#		readyVeh = False # wait for arm team or user to publish /ready_for_veh_mov to True again
+#		
+#		while not appret and not (viewedTag==3 and atTarget==3): # While we need movement in retreat
+#			# Send movement directions to aprilTagController.py
+#			approach_retreat_pub.publish(appret) # Approach or retreat?
+#			drive_to_this_tag_pub.publish(target) # Which tag to approach/retreat to/from?
+#			if atTarget==target:
+#				target--
+#		# If while loop is over, then we must have successfully retreated
 
 
-	r = rospy.Rate(1)
-	while not rospy.is_shutdown():
-		r.sleep()
 

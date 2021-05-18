@@ -318,9 +318,7 @@ while not rospy.is_shutdown():
 		approachRetreat()
 		print 'Done'
 		
-	r = rospy.Rate(1)
-	while not rospy.is_shutdown():
-		r.sleep()
+	r.sleep()
 
 # Finally, stop the robot when shutting down
 jcv = JoyCmd()
