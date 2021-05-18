@@ -166,7 +166,7 @@ def stopAuto(data):
 	stopAuto = data.data
 
 
-def approach():
+def approachRetreat():
 	# Description: Drive within a certain distace of the tag 'targetTagID'
 		# Return
 			# null
@@ -205,6 +205,8 @@ def approach():
 			print('Approaching x=', relX)
 			print('Approaching z=', relZ)
 			print('Approaching relYawZ =', relYawZ)
+			print('Approaching relRollX =', relRollX)
+			print('Approaching relPitchY =', relPitchY)
 
 			# Error criteria for z distance away is 'tagAppDist'
 			# Error criteria for x distance away is hard coded below
@@ -212,13 +214,24 @@ def approach():
 			zMov = 0.0
 			yawMov = 0.0
 
+			# Set the x, z, and theta velocities
 			if abs(relX) > .01:
 				# keep moving in the x (sideways) until error is small
 				xMov = relX
 				
-			if abs(relZ) > tagAppDist:
+			#  Adjust the zMoz depending on if we are approaching or retreating
+			if ( (abs(relZ) > tagAppDist) and appret ):
 				# keep moving in the z (forwards) until within range
 				zMov = relZ
+				print("Approaching tag ", tagID)
+
+			if ( (abs(relZ) < tagRetDist) and (not appret ) ):
+				# keep moving in the negative z direction until within range
+				error = -1.0 *( tagRetDist - relZ) -.3  # This should always be a negative number
+				zMov =  error
+				print("Retreating from tag ", tagID)
+
+
 			if abs(relYawZ) > .1:
 				# keep rotating about towards the center of the tag
 				yawMov = relYawZ
@@ -233,8 +246,8 @@ def approach():
 				# we need to move
 				# Calculate speed and cap it
 				speed = 0.2* relPosNorm
-				if speed > .66:
-					speed = .66
+				if speed > .5:
+					speed = .5
 
 				xDot = -xMov / relPosNorm * speed
 				zDot = zMov / relPosNorm * speed
@@ -260,68 +273,13 @@ def approach():
 		jcv.axis1 = xDot
 		jcv.axis2 = zDot
 		jcv.axis3 = thetaDot
+		print( "Sending motor commands: Axis1 = ", xDot, " Axis2 = ", zDot, " Axis3 = ", thetaDot)
 		virtualJoy_pub.publish(jcv)
 		r.sleep()
-	print('Arrived at tag')
+	print('Arrived at Position')
 
 
-def retreat():
-	# Description: Drive within a certian distace of the tag 'targetTagID'
-		# Return
-			# null
-		# Argument
-			# targetTagID - The ID of the tag that we wish to point the robot's camera towards
 
-	#relX=tagPose.pose.pose.position.x
-	#relZ=tagPose.pose.pose.position.z
-	retreated=False
-	
-	jcv = JoyCmd()
-	jcv.axis3 = 0.0
-	jcv.btn1 = 0.0
-	jcv.btn2 = 0.0
-	jcv.btn3 = 0.0
-	
-	while retreated==False:			
-
-		if rospy.is_shutdown():
-			break
-
-		if tagPose != None:	
-	
-			relX=tagPose.pose.pose.position.x
-			relZ=tagPose.pose.pose.position.z
-			
-			print 'Approaching x=', relX 
-			print 'Approaching z=', relZ 
-
-			vRel=np.array([relZ,relX])
-			relPosNorm=np.linalg.norm(vRel) # This relative position vector only involves X,Z, 
-							# not orientation (assumes X within range based on line 59
-			relPosUnitVec=vRel/relPosNorm
-			thetaDot=0
-			print relPosNorm
-			
-			if relPosNorm < tagRetDist: # Modified from default 0.5 to adapt approach distance to the specific tag
-				zDot=relPosUnitVec[0]
-				xDot=relPosUnitVec[1]
-				at_target_pub.publish(0)
-			else:
-				zDot=0
-				xDot=0
-				retreated=True
-				at_target_pub.publish(tagID)
-		else:
-			zDot=0
-			xDot=0
-			print 'lost tag'
-
-		jcv.axis1 = xDot
-		jcv.axis2 = zDot
-		virtualJoy_pub.publish(jcv)
-		r.sleep()
-	print('Retreated from tag')
-	
 #############################################################################
 #############################################################################
 ## Start of main code
@@ -357,10 +315,7 @@ while not rospy.is_shutdown():
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
-		if appret:
-			approach()
-		else:
-			retreat()
+		approachRetreat()
 		print 'Done'
 		
 	r = rospy.Rate(1)
