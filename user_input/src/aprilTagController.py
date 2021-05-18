@@ -35,7 +35,7 @@ tagID = None
 # Approach and retract distances
 tagAppDists = [0,0.5,0.5,0.5,0.27]      # index of list corresponds to tag ID, entry corresponds to approach distance
 tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
-tagAppDist  = 0.27  # initialize to something large to start
+tagAppDist  = 0.6 # initialize to something large to start
 tagRetDist  = 5.0  # initialize to something large to start
 
 # Target tags, control booleans, etc. - the node subscribes to this information.
@@ -98,7 +98,7 @@ def pointAtTag(targetTagID):
 		if targetTagID == tagID and tagPose != None: # We have found the tag that we were looking for.
 			relX=tagPose.pose.pose.position.x
 			print('tag position = ', relX)
-			if relX<.4 and relX>-.4: # If we are pointing at the tag  -> original values were .05
+			if relX<.1 and relX>-.1: # If we are pointing at the tag  -> original values were .05
 				thetaDot=0
 				pointed = True
 			else:
@@ -232,9 +232,9 @@ def approachRetreat():
 				print("Retreating from tag ", tagID)
 
 
-			if abs(relYawZ) > .1:
+			if abs(relPitchY) > .05:
 				# keep rotating about towards the center of the tag
-				yawMov = relYawZ
+				yawMov = relPitchY
 
 
 			# normalize the commands
@@ -254,7 +254,7 @@ def approachRetreat():
 
 			if yawMov > 0:
 				# we need to rotate
-				thetaDot = yawMov * .1  # hard code for now
+				thetaDot = -yawMov * .1 # hard code for now
 
 
 			if (relPosNorm == 0.0) and (yawMov == 0.0):
@@ -311,7 +311,7 @@ stopAuto = False # set for testing
 # This is the main loop
 while not rospy.is_shutdown():	
 
-	target = 3 #Hardcode to whatever tag is in video feed for testing
+	target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
