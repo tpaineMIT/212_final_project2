@@ -33,7 +33,7 @@ tagPose = None
 tagID = None
 
 # Approach and retract distances
-tagAppDists = [0,0.5,0.5,0.5,0.27]      # index of list corresponds to tag ID, entry corresponds to approach distance
+tagAppDists = [0,0.5,0.5,0.5,0.5,0.27]      # index of list corresponds to tag ID, entry corresponds to approach distance
 tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
 tagAppDist  = 0.6 # initialize to something large to start
 tagRetDist  = 5.0  # initialize to something large to start
@@ -142,8 +142,8 @@ def viewedTagRelPos(data):
 				global tagAppDist
 				global tagRetDist
 
-				tagAppDist = tagAppDists[(idseen-1)] # Assign tag approach distance based on the tag you're looking at
-				tagRetDist = tagRetDists[(idseen-1)]
+				tagAppDist = tagAppDists[(idseen)] # Assign tag approach distance based on the tag you're looking at
+				tagRetDist = tagRetDists[(idseen)]
 				#print('tag', tagID, 'detected')
 				#print('x', tagPose.pose.pose.position.x)
 				#print('z', tagPose.pose.pose.position.z)
