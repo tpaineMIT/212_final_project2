@@ -245,12 +245,20 @@ def approachRetreat():
 			if relPosNorm > 0:
 				# we need to move
 				# Calculate speed and cap it
-				speed = 0.2* relPosNorm
+				speedX = 0.4
+				speedZ = 0.2
+
 				if speed > .5:
 					speed = .5
 
-				xDot = -xMov / relPosNorm * speed
-				zDot = zMov / relPosNorm * speed
+				xDot = -xMov * speedX
+				zDot = zMov * speedZ
+
+				if xDot > .3:
+					xDot = .3
+				if zDot > .3:
+					zDot = .3
+
 
 			if yawMov > 0:
 				# we need to rotate
@@ -290,7 +298,7 @@ rospy.init_node('TagChaser', anonymous=True)
 # Subscribers
 apriltag_sub 		= rospy.Subscriber("/tag_detections", AprilTagDetectionArray, viewedTagRelPos)
 drive_to_this_tag_sub 	= rospy.Subscriber("/drive_to_this_tag", Int32, setTarget)
-set_current_tag_sub 	= rospy.Subscriber("/set_current_tag", Int32, setTarget) # for testing
+#set_current_tag_sub 	= rospy.Subscriber("/set_current_tag", Int32, setTarget) # for testing without statemachine node!!!!!
 approach_retreat_sub 	= rospy.Subscriber("/approach_retreat", Bool, setApproach) # True=approach
 stop_automode 		= rospy.Subscriber("/stop_automode", Bool, stopAuto)
 print("Subscriber setup")
@@ -305,13 +313,13 @@ r = rospy.Rate(50)
 print("ROS rate setup")
 
 
-appret = True # set for testing
-stopAuto = False # set for testing
+#appret = True # set for testing
+#stopAuto = False # set for testing
 
 # This is the main loop
 while not rospy.is_shutdown():	
 
-	target = 1 #Hardcode to whatever tag is in video feed for testing
+	#target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
 		pointAtTag(target)
