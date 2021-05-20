@@ -336,8 +336,7 @@ while not rospy.is_shutdown():
 	#target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
-		if appret:
-			pointAtTag(target)
+		pointAtTag(target)
 		approachRetreat()
 		print 'Done'
 	else:
