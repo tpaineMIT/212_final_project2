@@ -273,7 +273,7 @@ def approachRetreat():
 		else:
 			zDot=0
 			xDot=0
-			print 'lost tag'
+			print 'Obstacle in the way!!'
 
 		if not stopAuto:
 			jcv.axis1 = xDot
