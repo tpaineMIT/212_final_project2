@@ -89,13 +89,8 @@ def pointAtTag(targetTagID):
 	jcv.btn2 = 0.0
 	jcv.btn3 = 0.0
 
-	start_rotating_time = time.time()
-	while pointed == False:
-		if ((time.time() - start_rotating_time) < 10):
-			rate = .5
-		else:
-			rate = .25
 
+	while pointed == False:
 		if rospy.is_shutdown():
 			break
 
@@ -188,13 +183,12 @@ def approachRetreat():
 	jcv.btn2 = 0.0
 	jcv.btn3 = 0.0
 	
-	while ( (approached==False) and not stopAuto ): 			
+	while approached==False:			
 
 		if rospy.is_shutdown():
 			break
 
 		if tagPose != None:
-			good_tag_time = time.time()	
 			relX=tagPose.pose.pose.position.x
 			relZ=tagPose.pose.pose.position.z
 			q_x = tagPose.pose.pose.orientation.x
@@ -277,32 +271,9 @@ def approachRetreat():
 				at_target_pub.publish(tagID)
 
 		else:
-
-			# check if n secs has passed since start
-			elapsed_time = time.time() - good_tag_time
-			if (elapsed_time > 3.0):
-				# execute some recovery...
-				# Are we off course or was this a simple interupt?
-				if (relX > XXXXXX):
-					# off course
-					pointAtTag(target)
-					print 'I have gone off course and need to find the tag again'
-
-				else:
-					# simple interupt
-					stopAuto = True
-					print 'There is an obstacle I cannot get around'
-					print 'Reset by setting stop_automode to false'
-					return
-					
-	
-			else:
-				# Stop motion
-				zDot=0
-				xDot=0
-				thetaDot=0
-			
-			print ("lost tag for ", elapsed_time, " seconds") 
+			zDot=0
+			xDot=0
+			print 'lost tag'
 
 		jcv.axis1 = xDot
 		jcv.axis2 = zDot
@@ -350,7 +321,7 @@ while not rospy.is_shutdown():
 		print("Start aprilTagController")
 		pointAtTag(target)
 		approachRetreat()
-		#print 'Done'
+		print 'Done'
 	else:
 		jcv = JoyCmd()
 		jcv.axis1 = 0.0
