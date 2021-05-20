@@ -109,6 +109,7 @@ while not rospy.is_shutdown():
 				if appret and target<5: # need to include and target<5 to move successful docking into next loop to be caught by outer if statement
 					target+=1
 				elif appret and target==5: # arrived at docking so want to move to next time step through loop
+						
 					break
 				# If retreating and not yet reached finish line, decrement target by 1
 				elif target>3 and not appret:

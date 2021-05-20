@@ -32,7 +32,7 @@ tagPose = None
 tagID = None
 
 # Approach and retract distances
-tagAppDists = [0,0.5,0.5,0.5,1.22,0.27] # index of list corresponds to tag ID, entry corresponds to approach distance
+tagAppDists = [0,0.5,0.5,0.5,1.22,0.2] # index of list corresponds to tag ID, entry corresponds to approach distance
 tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
 tagAppDist  = 0.6 # initialize to something large to start
 tagRetDist  = 5.0  # initialize to something large to start
@@ -102,7 +102,7 @@ def pointAtTag(targetTagID):
 				pointed = True
 			else:
 				pointed = False
-				thetaDot=rate
+				#thetaDot=rate
 		else:
 			thetaDot=rate
 			pointed = False
@@ -316,6 +316,7 @@ print("ROS rate setup")
 #stopAuto = False # set for testing
 
 # This is the main loop
+first_time = True
 while not rospy.is_shutdown():	
 
 	#target = 1 #Hardcode to whatever tag is in video feed for testing
@@ -324,7 +325,9 @@ while not rospy.is_shutdown():
 		pointAtTag(target)
 		approachRetreat()
 		print 'Done'
-	else:
+		first_time = True
+	elif (stopAuto and first_time):
+		
 		jcv = JoyCmd()
 		jcv.axis1 = 0.0
 		jcv.axis2 = 0.0
@@ -333,6 +336,7 @@ while not rospy.is_shutdown():
 		jcv.btn2 = 0.0
 		jcv.btn3 = 0.0
 		virtualJoy_pub.publish(jcv)
+		first_time = False
 		
 	r.sleep()
 
