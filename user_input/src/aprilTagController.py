@@ -3,8 +3,7 @@
 # 2.12 Final Project
 # Phillip Daniel April 2021
 
-# Modifications from Ava, 5/15/2021
-# Modifications from Tyler 5/15/2021
+# Modified by 2.12 S2021 R3 team
 
 import rospy
 import numpy as np
@@ -25,7 +24,7 @@ from user_input.msg import Velocity, JoyCmd
 # These global variables are the pose of the mobile robot
 x = 0.0
 y = 0.0
-theta 	= 0.0
+theta = 0.0
 speed = 0.5
 
 # Tag information
@@ -33,7 +32,7 @@ tagPose = None
 tagID = None
 
 # Approach and retract distances
-tagAppDists = [0,0.5,0.5,0.5,1.22,0.27]      # index of list corresponds to tag ID, entry corresponds to approach distance
+tagAppDists = [0,0.5,0.5,0.5,1.22,0.27] # index of list corresponds to tag ID, entry corresponds to approach distance
 tagRetDists = [0,0,0,2.785,3.965,1.295] # index of list corresponds to tag ID, entry corresponds to approach distance
 tagAppDist  = 0.6 # initialize to something large to start
 tagRetDist  = 5.0  # initialize to something large to start
@@ -103,6 +102,7 @@ def pointAtTag(targetTagID):
 				pointed = True
 			else:
 				pointed = False
+				thetaDot=rate
 		else:
 			thetaDot=rate
 			pointed = False
