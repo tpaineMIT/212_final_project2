@@ -85,6 +85,7 @@ while not rospy.is_shutdown():
 		if viewedTag==5 and atTarget==5 and appret:
 			ready_for_arm_mov_pub.publish(True)
 			appret = False
+			atTarget = 0 # Make system recalculate whether we're "at target" 5 on retreat
 			readyVeh = False # Need arm team to publish True to /ready_for_veh_mov to start process again
 		# If finished retreating, stop our movement
 		elif viewedTag==3 and atTarget==3 and not appret:

@@ -257,12 +257,12 @@ def approachRetreat():
 					zDot = .3
 
 
-			if yawMov > 0:
+#			if yawMov > 0:
 				# we need to rotate
-				thetaDot = -yawMov * 3 # hard code for now
+#				thetaDot = -yawMov * 3 # hard code for now
 
 
-			if (relPosNorm == 0.0) and (yawMov == 0.0):
+			if (relPosNorm == 0.0) and (yawMov == 0.0): # yawMov should always be 0
 				# We have arrived - both translation and rotation errors are within limits	
 				xDot=0			
 				zDot=0
