@@ -106,9 +106,9 @@ def pointAtTag(targetTagID):
 		else:
 			thetaDot=rate
 			pointed = False
-
-		jcv.axis3 = thetaDot
-		virtualJoy_pub.publish(jcv)
+		if not stopAuto:
+			jcv.axis3 = thetaDot
+			virtualJoy_pub.publish(jcv)
 	print('Pointed at tag = ', tagID)
 
 
@@ -232,9 +232,9 @@ def approachRetreat():
 				print("Retreating from tag ", tagID)
 
 
-			if abs(relPitchY) > .05:
+#			if abs(relPitchY) > .05:
 				# keep rotating about towards the center of the tag
-				yawMov = relPitchY
+#				yawMov = relPitchY
 
 
 			# normalize the commands
@@ -275,11 +275,13 @@ def approachRetreat():
 			xDot=0
 			print 'lost tag'
 
-		jcv.axis1 = xDot
-		jcv.axis2 = zDot
-		jcv.axis3 = thetaDot
-		print( "Sending motor commands: Axis1 = ", xDot, " Axis2 = ", zDot, " Axis3 = ", thetaDot)
-		virtualJoy_pub.publish(jcv)
+		if not stopAuto:
+			jcv.axis1 = xDot
+			jcv.axis2 = zDot
+			#jcv.axis3 = thetaDot
+			#print( "Sending motor commands: Axis1 = ", xDot, " Axis2 = ", zDot, " Axis3 = ", thetaDot)
+			print("Sending motor commands: Axis1 = ", xDot, " Axis2 = ", zDot)
+			virtualJoy_pub.publish(jcv)
 		r.sleep()
 	print('Arrived at Position')
 
@@ -319,7 +321,8 @@ while not rospy.is_shutdown():
 	#target = 1 #Hardcode to whatever tag is in video feed for testing
 	if not stopAuto:
 		print("Start aprilTagController")
-		pointAtTag(target)
+		if appret:
+			pointAtTag(target)
 		approachRetreat()
 		print 'Done'
 	else:
