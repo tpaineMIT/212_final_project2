@@ -79,7 +79,7 @@ def pointAtTag(targetTagID):
 	print("starting to point at target")
 	zDot=0
 	xDot=0
-	rate=.5
+	rate=.3 # Maybe make rate dependent upon angle
 	pointed = False
 	
 	jcv = JoyCmd()
@@ -245,11 +245,8 @@ def approachRetreat():
 			if relPosNorm > 0:
 				# we need to move
 				# Calculate speed and cap it
-				speedX = 0.4
+				speedX = 6
 				speedZ = 0.2
-
-				if speed > .5:
-					speed = .5
 
 				xDot = -xMov * speedX
 				zDot = zMov * speedZ
@@ -262,7 +259,7 @@ def approachRetreat():
 
 			if yawMov > 0:
 				# we need to rotate
-				thetaDot = -yawMov * .1 # hard code for now
+				thetaDot = -yawMov * 3 # hard code for now
 
 
 			if (relPosNorm == 0.0) and (yawMov == 0.0):
@@ -325,6 +322,15 @@ while not rospy.is_shutdown():
 		pointAtTag(target)
 		approachRetreat()
 		print 'Done'
+	else:
+		jcv = JoyCmd()
+		jcv.axis1 = 0.0
+		jcv.axis2 = 0.0
+		jcv.axis3 = 0.0
+		jcv.btn1 = 0.0
+		jcv.btn2 = 0.0
+		jcv.btn3 = 0.0
+		virtualJoy_pub.publish(jcv)
 		
 	r.sleep()
 
